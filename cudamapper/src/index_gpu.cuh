@@ -483,8 +483,8 @@ namespace index_gpu {
 
         std::uint64_t total_basepairs = 0;
         std::vector<ArrayBlock> read_id_to_basepairs_section_h;
-        std::vector<FastaSequence> fasta_objects;
-        std::vector<std::size_t> fasta_indices;
+        std::vector<FastaSequence> fasta_sequences;
+        std::vector<std::size_t> fasta_sequence_indices;
 
         read_id_t global_read_id = 0;
         // find out how many basepairs each read has and determine its section in the big array with all basepairs
@@ -493,14 +493,15 @@ namespace index_gpu {
             auto last_read_ = std::min(range.second, static_cast<size_t>(total_reads - 1));
 
             for(auto read_id = first_read_; read_id <= last_read_; read_id++) {
-                fasta_objects.emplace_back(fasta_parser->get_sequence(read_id));
-                const FastaSequence& s = fasta_objects.back();
-                if (s.seq.length() >= window_size_ + kmer_size_ - 1) {
-                    read_id_to_basepairs_section_h.emplace_back(ArrayBlock{total_basepairs, static_cast<std::uint32_t>(s.seq.length())});
-                    total_basepairs += s.seq.length();
-                    read_id_to_read_name_.push_back(s.name);
-                    read_id_to_read_length_.push_back(s.seq.length());
-                    fasta_indices.push_back(global_read_id);
+                fasta_sequences.emplace_back(fasta_parser->get_sequence(read_id));
+                const std::string& seq = fasta_sequences.back().seq;
+                const std::string& name = fasta_sequences.back().name;
+                if (seq.length() >= window_size_ + kmer_size_ - 1) {
+                    read_id_to_basepairs_section_h.emplace_back(ArrayBlock{total_basepairs, static_cast<std::uint32_t>(seq.length())});
+                    total_basepairs += seq.length();
+                    read_id_to_read_name_.push_back(name);
+                    read_id_to_read_length_.push_back(seq.length());
+                    fasta_sequence_indices.push_back(global_read_id);
                 } else {
                     CGA_LOG_INFO("Skipping read {}. It has {} basepairs, one window covers {} basepairs",
                             s.name,
@@ -518,21 +519,21 @@ namespace index_gpu {
 
         // copy each read to its section of the basepairs array
         read_id_t read_id = 0;
-        for (auto fasta_object_id: fasta_indices) { //TODO do not start from zero
+        for (auto fasta_object_id: fasta_sequence_indices) { //TODO do not start from zero
             // skip reads which are shorter than one window
-            const auto& s = fasta_objects[fasta_object_id];
-            if (s.seq.length() >= window_size_ + kmer_size_ - 1) {
-                std::copy(std::begin(s.seq),
-                        std::end(s.seq),
+            const std::string& seq = fasta_sequences[fasta_object_id].seq;
+            if (seq.length() >= window_size_ + kmer_size_ - 1) {
+                std::copy(std::begin(seq),
+                        std::end(seq),
                         std::next(std::begin(merged_basepairs_h), read_id_to_basepairs_section_h[read_id].first_element_)
                         );
                 ++read_id;
             }
         }
 
-        // fasta_objects not needed after this point
-        fasta_objects.clear();
-        fasta_objects.shrink_to_fit();
+        // fasta_sequences not needed after this point
+        fasta_sequences.clear();
+        fasta_sequences.shrink_to_fit();
 
         // move basepairs to the device
         CGA_LOG_INFO("Allocating {} bytes for read_id_to_basepairs_section_d", read_id_to_basepairs_section_h.size() * sizeof(decltype(read_id_to_basepairs_section_h)::value_type));
