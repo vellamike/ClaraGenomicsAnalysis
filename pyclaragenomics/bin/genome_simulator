@@ -113,10 +113,10 @@ def main():
     reads = tqdm(pool.imap(readgen, reads_per_worker), total=len(reads_per_worker))
     reads = [val for sublist in reads for val in sublist]
 
-    overlaps = readsim.generate_overlaps(reads, gzip_compressed=True)
+    #overlaps = readsim.generate_overlaps(reads, gzip_compressed=True)
 
-    # Write the overlaps
-    pafio.write_paf(overlaps, args.paf_filepath)
+    ## Write the overlaps
+    #pafio.write_paf(overlaps, args.paf_filepath)
 
     # Write the reference
     fastaio.write_fasta(reference, args.reference_filepath)

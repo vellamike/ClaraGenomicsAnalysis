@@ -26,7 +26,7 @@ cuda_add_library(index_gpu
         src/index_gpu.cu
         src/minimizer.cu)
 target_include_directories(index_gpu PUBLIC include)
-target_link_libraries(index_gpu bioparser logging pthread utils)
+target_link_libraries(index_gpu bioparser logging pthread utils cgaio)
 target_compile_options(index_gpu PRIVATE -Werror)
 
 cuda_add_library(matcher
